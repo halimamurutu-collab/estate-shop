@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Estate Shop</title>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1d2a22;--mute:#66736b;--accent:#1f7a4d;--accent-d:#165c39;--line:#e2e6e0;--warn:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4;padding-bottom:90px}
+header{background:var(--accent);color:#fff;padding:18px 16px}
+header h1{margin:0;font-size:1.35rem}
+header p{margin:4px 0 0;font-size:.9rem;opacity:.92}
+main{max-width:900px;margin:0 auto;padding:12px 16px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+input,select,textarea,button{font:inherit}
+input[type=search],input[type=text],input[type=tel],textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.bar input{flex:1 1 200px}
+.bar select{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+h2{font-size:1.05rem;margin:18px 0 8px;color:var(--accent-d)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.item img{width:100%;height:110px;object-fit:cover;border-radius:8px;background:#eef1ec}
+.item .n{font-weight:600}
+.item .p{color:var(--mute)}
+.item.out{opacity:.55}
+.qty{display:flex;align-items:center;gap:10px;margin-top:auto}
+.qty button,.add{border:0;border-radius:9px;background:var(--accent);color:#fff;padding:9px 14px;cursor:pointer;font-weight:600}
+.qty button{width:38px;padding:9px 0}
+.qty button:hover,.add:hover{background:var(--accent-d)}
+.add{width:100%}
+.out-tag{color:var(--warn);font-weight:600}
+.empty{color:var(--mute);padding:20px 0}
+#cartbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+#cartbar button{border:0;border-radius:10px;background:var(--accent);color:#fff;padding:12px 18px;font-weight:700;cursor:pointer}
+#cartbar button:disabled{background:#9aa8a0;cursor:not-allowed}
+dialog{border:0;border-radius:14px;padding:0;width:min(520px,94vw);max-height:90vh}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.box{padding:16px;overflow:auto;max-height:88vh}
+.box h3{margin:0 0 8px}
+.line{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.sum{margin:10px 0;font-size:.95rem}
+.sum div{display:flex;justify-content:space-between;padding:2px 0}
+.sum .t{font-weight:700;font-size:1.05rem;border-top:1px solid var(--line);margin-top:4px;padding-top:6px}
+label{display:block;margin:10px 0 4px;font-weight:600;font-size:.9rem}
+.err{color:var(--warn);font-size:.9rem;margin:8px 0;min-height:1.2em}
+.row{display:flex;gap:8px;margin-top:12px}
+.row button{flex:1;border:0;border-radius:10px;padding:12px;font-weight:700;cursor:pointer}
+.go{background:var(--accent);color:#fff}
+.cancel{background:#e9ede8;color:var(--ink)}
+.note{font-size:.85rem;color:var(--mute)}
+noscript{display:block;padding:16px;background:#fff3cd}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="shopName"></h1>
+  <p id="shopInfo"></p>
+</header>
+<noscript>Please turn on JavaScript to use this shop.</noscript>
+<main>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search items..." maxlength="40" aria-label="Search items">
+    <select id="cat" aria-label="Category"></select>
+  </div>
+  <div id="list"></div>
+</main>
+
+<div id="cartbar">
+  <div><strong id="cartCount">0 items</strong><br><span class="note" id="cartTotal"></span></div>
+  <button id="viewCart" disabled>View order</button>
+</div>
+
+<dialog id="dlg">
+  <div class="box">
+    <h3>Your order</h3>
+    <div id="lines"></div>
+    <div class="sum" id="sum"></div>
+    <div class="err" id="minErr"></div>
+    <label for="name">Your name</label>
+    <input type="text" id="name" maxlength="60" autocomplete="name">
+    <label for="house">House / block &amp; door number</label>
+    <input type="text" id="house" maxlength="60">
+    <label for="phone">Phone number</label>
+    <input type="tel" id="phone" maxlength="16" inputmode="tel" autocomplete="tel" placeholder="07xx xxx xxx">
+    <label for="notes">Notes (optional)</label>
+    <textarea id="notes" rows="2" maxlength="200"></textarea>
+    <div class="err" id="err" role="alert"></div>
+    <div class="row">
+      <button class="cancel" id="close" type="button">Back</button>
+      <button class="go" id="send" type="button">Send order on WhatsApp</button>
+    </div>
+    <div id="fb" class="note" hidden>
+      <p><strong>Almost done!</strong> If WhatsApp did not open, tap <em>Open WhatsApp</em> below. Or copy the order and send it yourself to <strong id="fbNum"></strong>.</p>
+      <p><a id="fbLink" target="_blank" rel="noopener noreferrer">Open WhatsApp</a>
+      <button type="button" id="copy" class="cancel" style="margin-left:8px;border:0;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Copy order</button></p>
+      <textarea id="fbText" rows="6" readonly></textarea>
+    </div>
+    <p class="note">Your order opens in WhatsApp for you to send to the shop. Pay on delivery.</p>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+/* ============ EDIT THIS SECTION ONLY ============ */
+const SHOP = {
+  name: "Estate Shop",
+  whatsapp: "254111441771",   // WhatsApp number that receives orders: 254 then number without the first 0
+  minOrder: 20,               // minimum order value (KSh), items only
+  serviceFee: 2,              // service/delivery fee (KSh)
+  hours: "Open daily 7am - 9pm"
+};
+// inStock:false shows the item as "Out of stock". image is optional, e.g. "images/bread.jpg"
+const ITEMS = [
+  {id:1, name:"Bread (400g)",        price:60,  cat:"Bakery",    inStock:true},
+  {id:2, name:"Milk 500ml",          price:60,  cat:"Dairy",     inStock:true},
+  {id:3, name:"Eggs (each)",         price:20,  cat:"Dairy",     inStock:true},
+  {id:4, name:"Sugar 1kg",           price:170, cat:"Groceries", inStock:true},
+  {id:5, name:"Cooking oil 500ml",   price:150, cat:"Groceries", inStock:true},
+  {id:6, name:"Tomatoes (each)",     price:10,  cat:"Fresh",     inStock:true},
+  {id:7, name:"Soda 500ml",          price:70,  cat:"Drinks",    inStock:true},
+  {id:8, name:"Bar soap",            price:50,  cat:"Household", inStock:false}
+];
+/* ================================================= */
+
+const MAX_QTY = 50;
+const cart = {};
+const $ = id => document.getElementById(id);
+const fmt = n => "KSh " + Number(n).toLocaleString("en-KE");
+
+function el(tag, props, ...kids){
+  const e = document.createElement(tag);
+  if (props) for (const k in props){
+    if (k === "text") e.textContent = props[k];
+    else if (k === "class") e.className = props[k];
+    else e.setAttribute(k, props[k]);
+  }
+  kids.forEach(k => e.appendChild(k));
+  return e;
+}
+
+function subtotal(){
+  return ITEMS.reduce((s,i) => s + (cart[i.id] ? cart[i.id]*i.price : 0), 0);
+}
+function count(){
+  return Object.values(cart).reduce((a,b) => a+b, 0);
+}
+function setQty(id, q){
+  const it = ITEMS.find(i => i.id === id);
+  if (!it || !it.inStock) return;
+  q = Math.max(0, Math.min(MAX_QTY, Math.floor(q)));
+  if (q === 0) delete cart[id]; else cart[id] = q;
+  render();
+}
+
+function render(){
+  const term = $("q").value.trim().toLowerCase();
+  const cat = $("cat").value;
+  const list = $("list");
+  list.textContent = "";
+  const shown = ITEMS.filter(i => (cat === "All" || i.cat === cat) && i.name.toLowerCase().includes(term));
+  if (!shown.length){ list.appendChild(el("div",{class:"empty",text:"No items found."})); }
+  const cats = [...new Set(shown.map(i => i.cat))];
+  cats.forEach(c => {
+    list.appendChild(el("h2",{text:c}));
+    const grid = el("div",{class:"grid"});
+    shown.filter(i => i.cat === c).forEach(i => {
+      const card = el("div",{class:"item" + (i.inStock ? "" : " out")});
+      if (i.image) card.appendChild(el("img",{src:i.image,alt:i.name,loading:"lazy"}));
+      card.appendChild(el("div",{class:"n",text:i.name}));
+      card.appendChild(el("div",{class:"p",text:fmt(i.price)}));
+      if (!i.inStock){
+        card.appendChild(el("div",{class:"out-tag",text:"Out of stock"}));
+      } else if (!cart[i.id]){
+        const b = el("button",{class:"add",type:"button",text:"Add"});
+        b.onclick = () => setQty(i.id,1);
+        card.appendChild(b);
+      } else {
+        const m = el("button",{type:"button","aria-label":"Remove one",text:"−"});
+        const p = el("button",{type:"button","aria-label":"Add one",text:"+"});
+        m.onclick = () => setQty(i.id, cart[i.id]-1);
+        p.onclick = () => setQty(i.id, cart[i.id]+1);
+        card.appendChild(el("div",{class:"qty"}, m, el("strong",{text:String(cart[i.id])}), p));
+      }
+      grid.appendChild(card);
+    });
+    list.appendChild(grid);
+  });
+  const n = count();
+  $("cartCount").textContent = n + (n === 1 ? " item" : " items");
+  $("cartTotal").textContent = n ? "Items: " + fmt(subtotal()) : "Cart is empty";
+  $("viewCart").disabled = n === 0;
+  if ($("dlg").open) renderOrder();
+}
+
+function renderOrder(){
+  const lines = $("lines"); lines.textContent = "";
+  ITEMS.forEach(i => {
+    if (!cart[i.id]) return;
+    lines.appendChild(el("div",{class:"line"},
+      el("span",{text:cart[i.id] + " × " + i.name}),
+      el("span",{text:fmt(cart[i.id]*i.price)})));
+  });
+  const sub = subtotal(), total = sub + SHOP.serviceFee;
+  const sum = $("sum"); sum.textContent = "";
+  [["Items", fmt(sub)],["Service fee", fmt(SHOP.serviceFee)]].forEach(r =>
+    sum.appendChild(el("div",null, el("span",{text:r[0]}), el("span",{text:r[1]}))));
+  sum.appendChild(el("div",{class:"t"}, el("span",{text:"Total"}), el("span",{text:fmt(total)})));
+  const low = sub < SHOP.minOrder;
+  $("minErr").textContent = low ? "Minimum order is " + fmt(SHOP.minOrder) + " (items only)." : "";
+  $("send").disabled = low;
+}
+
+function clean(s){ return s.replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim(); }
+
+function send(){
+  const err = $("err"); err.textContent = "";
+  const sub = subtotal();
+  if (count() === 0) { err.textContent = "Your cart is empty."; return; }
+  if (sub < SHOP.minOrder) { err.textContent = "Minimum order is " + fmt(SHOP.minOrder) + "."; return; }
+  const name = clean($("name").value), house = clean($("house").value),
+        phone = clean($("phone").value), notes = clean($("notes").value);
+  if (name.length < 2) { err.textContent = "Please enter your name."; return; }
+  if (house.length < 1) { err.textContent = "Please enter your house/block number."; return; }
+  if (!/^\+?[0-9 ]{9,15}$/.test(phone)) { err.textContent = "Please enter a valid phone number."; return; }
+  if (!/^[0-9]{8,15}$/.test(SHOP.whatsapp) || SHOP.whatsapp === "254000000000") {
+    err.textContent = "Shop WhatsApp number is not set up yet."; return;
+  }
+  const total = sub + SHOP.serviceFee;
+  const rows = ITEMS.filter(i => cart[i.id]).map(i => "- " + cart[i.id] + " x " + i.name + " = " + fmt(cart[i.id]*i.price));
+  const msg = ["NEW ORDER", "", ...rows, "",
+    "Items: " + fmt(sub), "Service fee: " + fmt(SHOP.serviceFee), "TOTAL: " + fmt(total), "",
+    "Name: " + name, "House: " + house, "Phone: " + phone,
+    notes ? "Notes: " + notes : "", "Payment: on delivery"].filter((l,i,a) => !(l === "" && a[i-1] === "")).join("\n");
+  const url = "https://wa.me/" + SHOP.whatsapp + "?text=" + encodeURIComponent(msg);
+  $("fbLink").href = url;
+  $("fbText").value = msg;
+  $("fbNum").textContent = "0" + SHOP.whatsapp.slice(3);
+  $("fb").hidden = false;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+function copyOrder(){
+  const t = $("fbText"); t.focus(); t.select();
+  try { navigator.clipboard.writeText(t.value); }
+  catch (e) { try { document.execCommand("copy"); } catch (e2) {} }
+  $("copy").textContent = "Copied!";
+}
+
+function init(){
+  document.title = SHOP.name;
+  $("shopName").textContent = SHOP.name;
+  $("shopInfo").textContent = SHOP.hours + " · Delivered to your door · Min order " + fmt(SHOP.minOrder) + " · Service fee " + fmt(SHOP.serviceFee);
+  const cats = ["All", ...new Set(ITEMS.map(i => i.cat))];
+  cats.forEach(c => $("cat").appendChild(el("option",{value:c,text:c === "All" ? "All categories" : c})));
+  $("q").addEventListener("input", render);
+  $("cat").addEventListener("change", render);
+  $("viewCart").onclick = () => { renderOrder(); $("err").textContent=""; $("fb").hidden = true; $("copy").textContent = "Copy order"; $("dlg").showModal(); };
+  $("close").onclick = () => $("dlg").close();
+  $("send").onclick = send;
+  $("copy").onclick = copyOrder;
+  render();
+}
+init();
+</script>
+</body>
+</html>
